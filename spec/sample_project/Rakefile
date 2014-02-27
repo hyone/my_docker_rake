@@ -1,0 +1,8 @@
+require 'my_docker_rake/tasks'
+
+MyDockerRake::Tasks.new do |c|
+  c.image = 'my_docker_rake/sshd'
+  c.container = 'my_docker_rake.sshd'
+  c.data_image = 'my_docker_rake/data'
+  c.data_container = 'my_docker_rake.data'
+end
