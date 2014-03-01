@@ -37,6 +37,8 @@ module MyDockerRake
     end
 
     def has_image?(image)
+      return false if "#{image}".empty?
+
       name, tag = image.split(':')
       system <<-EOC
         docker images #{name} | grep -E '^#{Regexp::escape name}\s+#{Regexp::escape "#{tag}"}' \

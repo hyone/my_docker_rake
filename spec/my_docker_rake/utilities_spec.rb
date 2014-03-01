@@ -88,6 +88,14 @@ describe MyDockerRake::Utilities, '#has_image?' do
     before { remove_image(image, SILENCE_OPTIONS) }
     it { has_image?(image).should be_false }
   end
+
+  context 'when nil passed' do
+    it { has_image?(nil).should be_false }
+  end
+
+  context 'when empty string passed' do
+    it { has_image?('').should be_false }
+  end
 end
 
 

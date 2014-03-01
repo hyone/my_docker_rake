@@ -61,7 +61,7 @@ module MyDockerRake
           _data_container = args.data_container || ENV['DOCKER_DATA_CONTAINER'] || data_container
           _ports          = args.ports          || ENV['DOCKER_PORTS']          || ports
 
-          images = [_image, _data_image]
+          images = [_image, _data_image].reject(&:nil?)
           unless images.all? { |i| has_image?(i) }
             images.each do |i| task('docker:build').invoke(i) end
           end
