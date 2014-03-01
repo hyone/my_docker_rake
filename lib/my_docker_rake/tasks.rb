@@ -75,7 +75,7 @@ module MyDockerRake
 
           unless has_container?(_container)
             sh <<-EOC.gsub(/\s+/, ' ')
-              docker run -d -p 22 -p 9001 #{_ports} \
+              docker run -d #{_ports} \
                 -name #{_container} \
                 #{_data_container ? "--volumes-from #{_data_container}" : ''} \
                 #{_image}
