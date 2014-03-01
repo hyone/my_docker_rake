@@ -4,39 +4,52 @@ require 'tempfile'
 include MyDockerRake::Utilities
 
 
-def build_example_image(name)
-  system <<-EOC
-    echo "from busybox\nRUN echo 'hello world'" \
-    | docker build -t #{name} - >/dev/null 2>&1
-  EOC
-end
-
-def run_example_container
-  `docker run -d busybox sh -c 'while true; do echo "hello world"; sleep 1; done'`.chomp
-end
-
-
 SILENCE_OPTIONS = {verbose: false}
 
-describe MyDockerRake::Utilities, '#running_container?' do
-  around(:each) { |example|
-    @container = run_example_container
-    example.run
-    system <<-EOC
-      ( docker kill #{@container}; \
-        docker rm #{@container} ) \
-      >/dev/null 2>&1
-    EOC
+shared_context 'run_container' do
+  let! (:container) {
+    `docker run -d busybox sh -c 'while true; do echo "hello world"; sleep 1; done'`.chomp
   }
 
+  after(:each) do
+    system <<-EOC
+      ( docker kill #{container}; \
+        docker rm #{container} ) \
+      >/dev/null 2>&1
+    EOC
+  end
+end
+
+
+shared_context 'build_image' do
+  let (:image) { 'my_docker_rake/testing' }
+
+  around(:each) { |example|
+    system <<-EOC
+      echo "from busybox\nRUN echo 'hello world'" \
+      | docker build -t #{image} - >/dev/null 2>&1
+    EOC
+
+    example.run
+
+    system <<-EOC
+      docker rmi >/dev/null 2>&1
+    EOC
+  }
+end
+
+
+describe MyDockerRake::Utilities, '#running_container?' do
+  include_context 'run_container'
+
   context 'when container is running' do
-    it { running_container?(@container).should be_true }
+    it { running_container?(container).should be_true }
   end
 
   context 'when container is not running' do
-    before { `docker kill #{@container}` }
+    before { `docker kill #{container}` }
 
-    it { running_container?(@container).should be_false }
+    it { running_container?(container).should be_false }
   end
 
   context 'when container does not exist' do
@@ -46,24 +59,16 @@ end
 
 
 describe MyDockerRake::Utilities, '#has_container?' do
-  around(:each) { |example|
-    @container = run_example_container
-    example.run
-    system <<-EOC
-      ( docker kill #{@container}; \
-        docker rm #{@container} ) \
-      >/dev/null 2>&1
-    EOC
-  }
+  include_context 'run_container'
 
   context 'when container is running' do
-    it { has_container?(@container).should be_true }
+    it { has_container?(container).should be_true }
   end
 
   context 'when container is not running' do
-    before { `docker kill #{@container}` }
+    before { `docker kill #{container}` }
 
-    it { has_container?(@container).should be_true }
+    it { has_container?(container).should be_true }
   end
 
   context 'when container does not exist' do
@@ -73,13 +78,7 @@ end
 
 
 describe MyDockerRake::Utilities, '#has_image?' do
-  let (:image) { 'my_docker_rake/testing' }
-
-  around(:each) { |example|
-    build_example_image(image)
-    example.run
-    remove_image(image, SILENCE_OPTIONS)
-  }
+  include_context 'build_image'
 
   context 'when image exists' do
     it { has_image?(image).should be_true }
@@ -87,29 +86,26 @@ describe MyDockerRake::Utilities, '#has_image?' do
 
   context 'when image does not exist' do
     before { remove_image(image, SILENCE_OPTIONS) }
-
     it { has_image?(image).should be_false }
   end
 end
 
 
 describe MyDockerRake::Utilities, '#kill_container' do
-  before(:each) {
-    @container = run_example_container
-  }
+  include_context 'run_container'
 
   context 'when container is running' do
     it 'kill container' do
-      running_container?(@container).should be_true
-      kill_container(@container, SILENCE_OPTIONS)
-      running_container?(@container).should be_false
+      running_container?(container).should be_true
+      kill_container(container, SILENCE_OPTIONS)
+      running_container?(container).should be_false
     end
   end
 
   context 'when container is not running' do
     it 'do nothing' do
       proc {
-        kill_container(@container, SILENCE_OPTIONS)
+        kill_container(container, SILENCE_OPTIONS)
       }.should_not raise_error
     end
   end
@@ -117,34 +113,32 @@ end
 
 
 describe MyDockerRake::Utilities, '#remove_container' do
-  before(:each) {
-    @container = run_example_container
-  }
+  include_context 'run_container'
 
   context 'when container is running' do
     it 'raise error' do
       proc {
-        remove_container(@container, SILENCE_OPTIONS)
+        remove_container(container, SILENCE_OPTIONS)
       }.should raise_error(RuntimeError)
     end
   end
 
   context 'when container exists' do
-    before { kill_container(@container, SILENCE_OPTIONS) }
+    before { kill_container(container, SILENCE_OPTIONS) }
 
     it 'remove container' do
       proc {
-        remove_container(@container, SILENCE_OPTIONS)
+        remove_container(container, SILENCE_OPTIONS)
       }.should_not raise_error
 
-      has_container?(@container).should be_false
+      has_container?(container).should be_false
     end
   end
 
   context 'when container does not exist' do
     it 'do nothing' do
       proc {
-        kill_container(@container, SILENCE_OPTIONS)
+        kill_container(container, SILENCE_OPTIONS)
       }.should_not raise_error
     end
   end
@@ -152,37 +146,35 @@ end
 
 
 describe MyDockerRake::Utilities, '#destroy_container' do
-  before(:each) {
-    @container = run_example_container
-  }
+  include_context 'run_container'
 
   context 'when container is running' do
     it 'kill and remove container' do
       proc {
-        destroy_container(@container, SILENCE_OPTIONS)
+        destroy_container(container, SILENCE_OPTIONS)
       }.should_not raise_error
 
-      running_container?(@container).should be_false
-      has_container?(@container).should be_false
+      running_container?(container).should be_false
+      has_container?(container).should be_false
     end
   end
 
   context 'when container exists' do
-    before { kill_container(@container, SILENCE_OPTIONS) }
+    before { kill_container(container, SILENCE_OPTIONS) }
 
     it 'remove container' do
       proc {
-        destroy_container(@container, SILENCE_OPTIONS)
+        destroy_container(container, SILENCE_OPTIONS)
       }.should_not raise_error
 
-      has_container?(@container).should be_false
+      has_container?(container).should be_false
     end
   end
 
   context 'when container does not exist' do
     it 'do nothing' do
       proc {
-        destroy_container(@container, SILENCE_OPTIONS)
+        destroy_container(container, SILENCE_OPTIONS)
       }.should_not raise_error
     end
   end
@@ -190,15 +182,9 @@ end
 
 
 describe MyDockerRake::Utilities, '#remove_image' do
-  let (:image) { 'my_docker_rake/testing' }
+  include_context 'build_image'
 
   context 'when image exists' do
-    around(:each) { |example|
-      build_example_image(image)
-      example.run
-      remove_image(image, SILENCE_OPTIONS)
-    }
-
     it {
       remove_image(image, SILENCE_OPTIONS)
       has_image?(image).should be_false
@@ -206,6 +192,8 @@ describe MyDockerRake::Utilities, '#remove_image' do
   end
 
   context 'when image does not exist' do
+    before { system "docker rmi #{image} >/dev/null 2>&1" }
+
     it 'do nothing' do
       proc {
         remove_image(image, SILENCE_OPTIONS)
