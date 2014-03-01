@@ -130,7 +130,7 @@ module MyDockerRake
           end
         end
 
-        desc 'remove project images'
+        desc 'remove project images containers'
         task :rmi, [:images] => ['docker:destroy:all'] do |t, args|
           images = case
             when args.images           then args.projects.split(/,/)
@@ -143,14 +143,8 @@ module MyDockerRake
           end
         end
 
-        desc 'clean all docker containers and non named images'
-        task :clean do
-          puts '---> removing all containers...'
-          sh 'docker rm $(docker ps -a -q) || :'
-          puts '---> removing all <none> images...'
-          sh "docker rmi $(docker images | grep -e '^<none>' | awk '{ print $3 }' ) || :"
-        end
-
+        desc "clean project's docker images and containers"
+        task :clean => ['docker:rmi']
       end
     end
   end
