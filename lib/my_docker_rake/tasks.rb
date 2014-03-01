@@ -33,11 +33,13 @@ module MyDockerRake
       namespace :docker do
 
         desc 'build docker images'
-        task :build, [:project, :no_cache] do |t, args|
-          _no_cache = args.no_cache || no_cache
-          projects = args.projects \
-            ? [args.project]
-            : get_projects('./dockerfiles')
+        task :build, [:projects, :no_cache] do |t, args|
+          _no_cache = args.no_cache || ENV['DOCKER_NO_CACHE'] || no_cache
+          projects = case
+            when args.project          then args.projects.split(/,/)
+            when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
+            else get_projects('./dockerfiles')
+            end
 
           projects.each do |project|
             image = project2image(project)
@@ -53,11 +55,11 @@ module MyDockerRake
 
         desc 'run the container with persistent data container'
         task :run, [:container, :data_container, :ports, :image, :data_image] do |t, args|
-          _image          = args.image          || image
-          _data_image     = args.data_image     || data_image
-          _container      = args.container      || container
-          _data_container = args.data_container || data_container
-          _ports          = args.ports          || ports
+          _image          = args.image          || ENV['DOCKER_IMAGE']          || image
+          _data_image     = args.data_image     || ENV['DOCKER_DATA_IMAGE']     || data_image
+          _container      = args.container      || ENV['DOCKER_CONTAINER']      || container
+          _data_container = args.data_container || ENV['DOCKER_DATA_CONTAINER'] || data_container
+          _ports          = args.ports          || ENV['DOCKER_PORTS']          || ports
 
           images = [_image, _data_image]
           unless images.all? { |i| has_image?(i) }
@@ -85,9 +87,11 @@ module MyDockerRake
         task :push, [:project] do |t, args|
           registry_host = "#{docker_host}:5000"
 
-          projects = args.projects \
-            ? [args.project]
-            : get_projects('./dockerfiles')
+          projects = case
+            when args.project          then args.projects.split(/,/)
+            when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
+            else get_projects('./dockerfiles')
+            end
 
           projects.each do |project|
             image = project.gsub('_', '/')
@@ -98,19 +102,19 @@ module MyDockerRake
 
         desc 'kill main container'
         task :kill, [:container] do |t, args|
-          _container = args.container || container
+          _container = args.container || ENV['DOCKER_CONTAINER'] || container
           kill_container(_container)
         end
 
         desc 'remove main container'
         task :rm, [:container] do |t, args|
-          _container = args.container || container
+          _container = args.container || ENV['DOCKER_CONTAINER'] || container
           remove_container(_container)
         end
 
         desc 'kill and remove main container'
         task :destroy, [:container] do |t, args|
-          _container = args.container || container
+          _container = args.container || ENV['DOCKER_CONTAINER'] || container
           task('docker:kill').invoke(_container)
           task('docker:rm').invoke(_container)
         end
@@ -118,19 +122,21 @@ module MyDockerRake
         namespace :destroy do
           desc 'destroy all the containers (include data container)'
           task :all, [:container, :data_container] do |t, args|
-            _container = args.container || container
+            _container = args.container || ENV['DOCKER_CONTAINER'] || container
             task('docker:destroy').invoke(_container)
 
-            _data_container = args.data_container || data_container
+            _data_container = args.data_container || ENV['DOCKER_DATA_CONTAINER'] || data_container
             remove_container(_data_container)
           end
         end
 
         desc 'remove project images'
         task :rmi, [:images] => ['docker:destroy:all'] do |t, args|
-          images = args.images \
-            ? args.images.split(/,\s+/)
-            : get_projects('./dockerfiles').map { |p| project2image(p) }
+          images = case
+            when args.images           then args.projects.split(/,/)
+            when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
+            else get_projects('./dockerfiles').map { |p| project2image(p) }
+            end
 
           images.each do |image|
             remove_image(image)
