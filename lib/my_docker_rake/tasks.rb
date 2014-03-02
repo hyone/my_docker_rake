@@ -12,7 +12,9 @@ module MyDockerRake
     attr_accessor :data_container
     attr_accessor :docker_host
     attr_accessor :no_cache
-    attr_accessor :ports
+    attr_accessor :build_options
+    attr_accessor :run_options
+    attr_accessor :data_run_options
 
     def docker_host
       @docker_host ||=
@@ -33,8 +35,10 @@ module MyDockerRake
       namespace :docker do
 
         desc 'build docker images'
-        task :build, [:projects, :no_cache] do |t, args|
-          _no_cache = args.no_cache || ENV['DOCKER_NO_CACHE'] || no_cache
+        task :build, [:projects, :no_cache, :build_options] do |t, args|
+          _no_cache      = args.no_cache      || ENV['DOCKER_NO_CACHE']      || no_cache
+          _build_options = args.build_options || ENV['DOCKER_BUILD_OPTIONS'] || build_options
+
           projects = case
             when args.project          then args.projects.split(/,/)
             when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
@@ -48,18 +52,20 @@ module MyDockerRake
               docker build \
                 #{_no_cache ? '--no-cache' : ''} \
                 -t #{image} \
+                #{_build_options} \
                 dockerfiles/#{project}
             EOC
           end
         end
 
         desc 'run the container with persistent data container'
-        task :run, [:container, :data_container, :ports, :image, :data_image] do |t, args|
-          _image          = args.image          || ENV['DOCKER_IMAGE']          || image
-          _data_image     = args.data_image     || ENV['DOCKER_DATA_IMAGE']     || data_image
-          _container      = args.container      || ENV['DOCKER_CONTAINER']      || container
-          _data_container = args.data_container || ENV['DOCKER_DATA_CONTAINER'] || data_container
-          _ports          = args.ports          || ENV['DOCKER_PORTS']          || ports
+        task :run, [:container, :data_container, :run_options, :image, :data_image] do |t, args|
+          _image            = args.image            || ENV['DOCKER_IMAGE']            || image
+          _data_image       = args.data_image       || ENV['DOCKER_DATA_IMAGE']       || data_image
+          _container        = args.container        || ENV['DOCKER_CONTAINER']        || container
+          _data_container   = args.data_container   || ENV['DOCKER_DATA_CONTAINER']   || data_container
+          _run_options      = args.run_options      || ENV['DOCKER_RUN_OPTIONS']      || run_options
+          _data_run_options = args.data_run_options || ENV['DOCKER_DATA_RUN_OPTIONS'] || data_run_options
 
           images = [_image, _data_image].reject(&:nil?)
           unless images.all? { |i| has_image?(i) }
@@ -69,15 +75,19 @@ module MyDockerRake
           # create a data container if doesnt exist
           if _data_container and not has_container?(_data_container)
             sh <<-EOC.gsub(/\s+/, ' ')
-              docker run -name #{_data_container} #{_data_image}
+              docker run \
+                -name #{_data_container} \
+                #{_data_run_options} \
+                #{_data_image}
             EOC
           end
 
           unless has_container?(_container)
             sh <<-EOC.gsub(/\s+/, ' ')
-              docker run -d #{_ports} \
+              docker run -d \
                 -name #{_container} \
                 #{_data_container ? "--volumes-from #{_data_container}" : ''} \
+                #{_run_options} \
                 #{_image}
             EOC
           end
@@ -88,7 +98,7 @@ module MyDockerRake
           registry_host = "#{docker_host}:5000"
 
           projects = case
-            when args.project          then args.projects.split(/,/)
+            when args.projects          then args.projects.split(/,/)
             when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
             else get_projects('./dockerfiles')
             end
