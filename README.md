@@ -69,13 +69,20 @@ Image name (and also tag if have) is taken from project's (directory) name.
 
 See also a sample project in `spec/sample_project`.
 
+#### Parameters
+
+- `build_options` : options that is passed to *docker build* command
+
 ### docker:run
 
 Run container ( if set `docker_data_image`, with creating and mounting persistent data container )
 image and container can specify parameters below:
 
+#### Parameters
+
 - `image` : image name of container to run
 - `data_image` : image name of persistent data container
 - `container` : container name to run
 - `data_container` : persistent data container name
-- `ports` : port options of *docker run* command ( e.g. `'-p 48080:8080 -p ...'` )
+- `run_options` : options that is passed to *docker run* command for the main container ( e.g. `'-p 48080:8080 -p ...'` )
+- `data_run_options` : options that is passed to *docker run* command for the data container
