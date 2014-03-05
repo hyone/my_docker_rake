@@ -33,11 +33,11 @@ describe 'docker:build' do
   }
 
   before(:each) do
-    rake['docker:rmi'].invoke
+    rake['docker:clean'].invoke
   end
 
   after(:each) do
-    rake['docker:rmi'].invoke
+    rake['docker:clean'].invoke
   end
 
   it 'build docker images' do
@@ -54,19 +54,19 @@ end
 describe 'docker:run' do
   include_context 'rake'
 
-  let (:image)          { 'mydockerrake/sshd:v2' }
-  let (:data_image)     { 'mydockerrake/data' }
-  let (:container)      { 'mydockerrake.container' }
-  let (:data_container) { 'mydockerrake.container-data' }
-
   after(:each) {
-    rake['docker:destroy:all'].invoke(container, data_container)
+    rake['docker:destroy'].invoke()
   }
 
   it 'run docker containers' do
-    subject.invoke(container, data_container, '', image, data_image)
+    subject.invoke()
 
-    has_container?(data_container).should be_true
-    running_container?(container).should be_true
+    MyDockerRake::Tasks.application.containers.each do |c|
+      has_container?(c[:name]).should be_true
+      # daemon container should keep running
+      if c[:ports]
+        running_container?(c[:name]).should be_true
+      end
+    end
   end
 end

@@ -6,15 +6,14 @@ module MyDockerRake
   class Tasks < ::Rake::TaskLib
     include MyDockerRake::Utilities
 
-    attr_accessor :image
-    attr_accessor :container
-    attr_accessor :data_image
-    attr_accessor :data_container
-    attr_accessor :docker_host
+    class << self
+      attr_accessor :application
+    end
+
+    attr_accessor :containers
     attr_accessor :no_cache
-    attr_accessor :build_options
-    attr_accessor :run_options
-    attr_accessor :data_run_options
+    attr_accessor :build_rm
+    attr_accessor :docker_host
 
     def docker_host
       @docker_host ||=
@@ -29,18 +28,19 @@ module MyDockerRake
     def initialize(*args, &configure_block)
       configure_block.call(self) if configure_block
       define_tasks
+      self.class.application = self
     end
 
     def define_tasks
       namespace :docker do
 
         desc 'build docker images'
-        task :build, [:projects, :no_cache, :build_options] do |t, args|
-          _no_cache      = args.no_cache      || ENV['DOCKER_NO_CACHE']      || no_cache
-          _build_options = args.build_options || ENV['DOCKER_BUILD_OPTIONS'] || build_options
+        task :build, [:projects, :no_cache, :build_rm] do |t, args|
+          _no_cache = args.no_cache || ENV['DOCKER_NO_CACHE'] || no_cache
+          _build_rm = args.build_rm || ENV['DOCKER_BUILD_RM'] || build_rm
 
           projects = case
-            when args.project          then args.projects.split(/,/)
+            when args.projects          then args.projects.split(/,/)
             when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
             else get_projects('./dockerfiles')
             end
@@ -51,45 +51,37 @@ module MyDockerRake
             sh <<-EOC.gsub(/\s+/, ' ')
               docker build \
                 #{_no_cache ? '--no-cache' : ''} \
+                #{_build_rm ? '--rm' : ''} \
                 -t #{image} \
-                #{_build_options} \
                 dockerfiles/#{project}
             EOC
           end
         end
 
-        desc 'run the container with persistent data container'
-        task :run, [:container, :data_container, :run_options, :image, :data_image] do |t, args|
-          _image            = args.image            || ENV['DOCKER_IMAGE']            || image
-          _data_image       = args.data_image       || ENV['DOCKER_DATA_IMAGE']       || data_image
-          _container        = args.container        || ENV['DOCKER_CONTAINER']        || container
-          _data_container   = args.data_container   || ENV['DOCKER_DATA_CONTAINER']   || data_container
-          _run_options      = args.run_options      || ENV['DOCKER_RUN_OPTIONS']      || run_options
-          _data_run_options = args.data_run_options || ENV['DOCKER_DATA_RUN_OPTIONS'] || data_run_options
+        desc 'run project containers'
+        task :run do
 
-          images = [_image, _data_image].reject(&:nil?)
+          images = containers.map { |c| c[:image] }
           unless images.all? { |i| has_image?(i) }
             images.each do |i| task('docker:build').invoke(i) end
           end
 
-          # create a data container if doesnt exist
-          if _data_container and not has_container?(_data_container)
-            sh <<-EOC.gsub(/\s+/, ' ')
-              docker run \
-                -name #{_data_container} \
-                #{_data_run_options} \
-                #{_data_image}
-            EOC
-          end
+          containers.each do |container|
+            if container[:name] and not has_container?(container[:name])
+              links = container[:links] || []
+              ports = container[:ports] || []
+              volumes_from = container[:volumes_from] || []
 
-          unless has_container?(_container)
-            sh <<-EOC.gsub(/\s+/, ' ')
-              docker run -d \
-                -name #{_container} \
-                #{_data_container ? "--volumes-from #{_data_container}" : ''} \
-                #{_run_options} \
-                #{_image}
-            EOC
+              sh <<-EOC.gsub(/\s+/, ' ')
+                docker run -d \
+                  -name #{container[:name]} \
+                  #{ links.map { |l| "--link #{l}" }.join(' ') } \
+                  #{ ports.map { |p| "-p #{p}" }.join(' ') } \
+                  #{ volumes_from.map { |v| "--volumes-from #{v}" }.join(' ') } \
+                  #{ container[:options] } \
+                  #{ container[:image] }
+              EOC
+            end
           end
         end
 
@@ -111,39 +103,53 @@ module MyDockerRake
         end
 
         desc 'kill main container'
-        task :kill, [:container] do |t, args|
-          _container = args.container || ENV['DOCKER_CONTAINER'] || container
-          kill_container(_container)
-        end
+        task :kill, [:containers] do |t, args|
+          container_names =
+            if not "#{args.containers}".empty? or ENV['DOCKER_CONTAINERS']
+              [(args.containers || ENV['DOCKER_CONTAINERS']).split(/,/)]
+            else
+              containers.map { |c| c[:name] }
+            end
 
-        desc 'remove main container'
-        task :rm, [:container] do |t, args|
-          _container = args.container || ENV['DOCKER_CONTAINER'] || container
-          remove_container(_container)
-        end
-
-        desc 'kill and remove main container'
-        task :destroy, [:container] do |t, args|
-          _container = args.container || ENV['DOCKER_CONTAINER'] || container
-          task('docker:kill').invoke(_container)
-          task('docker:rm').invoke(_container)
-        end
-
-        namespace :destroy do
-          desc 'destroy all the containers (include data container)'
-          task :all, [:container, :data_container] do |t, args|
-            _container = args.container || ENV['DOCKER_CONTAINER'] || container
-            task('docker:destroy').invoke(_container)
-
-            _data_container = args.data_container || ENV['DOCKER_DATA_CONTAINER'] || data_container
-            remove_container(_data_container)
+          container_names.each do |c|
+            kill_container(c)
           end
         end
 
-        desc 'remove project images containers'
-        task :rmi, [:images] => ['docker:destroy:all'] do |t, args|
+        desc 'remove main container'
+        task :rm, [:containers, :force_delete] do |t, args|
+          _force_delete = args.force_delete || ENV['DOCKER_FORCE_DELETE']
+
+          container_names =
+            if not "#{args.containers}".empty? or ENV['DOCKER_CONTAINERS']
+              [(args.containers || ENV['DOCKER_CONTAINERS']).split(/,/)]
+            else
+              containers.map { |c| c[:name] }
+            end
+
+          unless _force_delete
+            containers_hash = containers.inject({}) {|h, c| h[c[:name]] = c; h }
+            container_names = container_names.reject { |n| containers_hash[n][:protect_deletion] }
+          end
+
+          container_names.each do |container|
+            remove_container(container)
+          end
+        end
+
+        desc 'kill and remove main container'
+        task :destroy, [:containers, :force_delete] do |t, args|
+          task('docker:kill').invoke(args.containers)
+          task('docker:rm').invoke(args.containers, args.force_delete)
+        end
+
+        desc 'destroy and re-run the container'
+        task :rerun => ['docker:destroy', 'docker:run']
+
+        desc 'remove project images (and containers)'
+        task :rmi, [:images] do |t, args|
           images = case
-            when args.images           then args.projects.split(/,/)
+            when args.images            then args.projects.split(/,/)
             when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
             else get_projects('./dockerfiles').map { |p| project2image(p) }
             end
@@ -153,8 +159,11 @@ module MyDockerRake
           end
         end
 
-        desc "clean project's docker images and containers"
-        task :clean => ['docker:rmi']
+        desc "clean all project's docker images and containers"
+        task :clean do
+          task('docker:destroy').invoke(nil, true)
+          task('docker:rmi').invoke()
+        end
       end
     end
   end
