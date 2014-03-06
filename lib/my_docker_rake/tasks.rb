@@ -1,3 +1,4 @@
+require 'my_docker_rake/extensions'
 require 'my_docker_rake/utilities'
 require 'rake/tasklib'
 
@@ -40,8 +41,8 @@ module MyDockerRake
           _build_rm = args.build_rm || ENV['DOCKER_BUILD_RM'] || build_rm
 
           projects = case
-            when args.projects          then args.projects.split(/,/)
-            when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
+            when (not args.projects.blank?) then args.projects.split(/,/)
+            when ENV['DOCKER_PROJECTS']     then ENV['DOCKER_PROJECTS'].split(/,/)
             else get_projects('./dockerfiles')
             end
 
@@ -63,7 +64,7 @@ module MyDockerRake
 
           images = containers.map { |c| c[:image] }
           unless images.all? { |i| has_image?(i) }
-            images.each do |i| task('docker:build').invoke(i) end
+            task('docker:build').invoke
           end
 
           containers.each do |container|
@@ -105,7 +106,7 @@ module MyDockerRake
         desc 'kill main container'
         task :kill, [:containers] do |t, args|
           container_names =
-            if not "#{args.containers}".empty? or ENV['DOCKER_CONTAINERS']
+            if not args.containers.blank? or ENV['DOCKER_CONTAINERS']
               [(args.containers || ENV['DOCKER_CONTAINERS']).split(/,/)]
             else
               containers.map { |c| c[:name] }
@@ -121,7 +122,7 @@ module MyDockerRake
           _force_delete = args.force_delete || ENV['DOCKER_FORCE_DELETE']
 
           container_names =
-            if not "#{args.containers}".empty? or ENV['DOCKER_CONTAINERS']
+            if not args.containers.blank? or ENV['DOCKER_CONTAINERS']
               [(args.containers || ENV['DOCKER_CONTAINERS']).split(/,/)]
             else
               containers.map { |c| c[:name] }
