@@ -3,14 +3,15 @@ require 'my_docker_rake/tasks'
 MyDockerRake::Tasks.new do |c|
   c.containers = [
     {
-      name:  'mydockerrake.sshd',
-      image: 'mydockerrake/sshd:v2',
-      ports: [22]
-    },
-    {
       name:  'mydockerrake.data',
       image: 'mydockerrake/data',
       protect_deletion: true,
-    }
+    },
+    {
+      name:  'mydockerrake.sshd',
+      image: 'mydockerrake/sshd:v2',
+      volumes_from: ['mydockerrake.data'],
+      ports: [22]
+    },
   ]
 end
