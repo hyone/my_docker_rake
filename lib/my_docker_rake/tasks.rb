@@ -87,8 +87,8 @@ module MyDockerRake
         end
 
         desc "Push project's docker images to docker index service"
-        task :push, [:project] do |t, args|
-          registry_host = "#{docker_host}:5000"
+        task :push, [:projects, :registry_host] do |t, args|
+          registry_host = args.registry_host || ENV['DOCKER_REGISTRY_HOST']
 
           projects = case
             when args.projects          then args.projects.split(/,/)
@@ -98,8 +98,14 @@ module MyDockerRake
 
           projects.each do |project|
             image = project.gsub('_', '/')
-            sh "docker tag  #{image} #{registry_host}/#{image}"
-            sh "docker push #{registry_host}/#{image}"
+            # private docker registry
+            if registry_host
+              sh "docker tag  #{image} #{registry_host}/#{image}"
+              sh "docker push #{registry_host}/#{image}"
+            # public
+            else
+              sh "docker push #{image}"
+            end
           end
         end
 
