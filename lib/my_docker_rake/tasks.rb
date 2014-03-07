@@ -41,9 +41,12 @@ module MyDockerRake
           _build_rm = args.build_rm || ENV['DOCKER_BUILD_RM'] || build_rm
 
           projects = case
-            when (not args.projects.blank?) then args.projects.split(/,/)
-            when ENV['DOCKER_PROJECTS']     then ENV['DOCKER_PROJECTS'].split(/,/)
-            else get_projects('./dockerfiles')
+            when !args.projects.blank?
+              args.projects.split(/,/)
+            when !ENV['DOCKER_PROJECTS'].blank?
+              ENV['DOCKER_PROJECTS'].split(/,/)
+            else
+              get_projects('./dockerfiles')
             end
 
           projects.each do |project|
@@ -91,9 +94,12 @@ module MyDockerRake
           registry_host = args.registry_host || ENV['DOCKER_REGISTRY_HOST']
 
           projects = case
-            when args.projects          then args.projects.split(/,/)
-            when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
-            else get_projects('./dockerfiles')
+            when !args.projects.blank?
+              args.projects.split(/,/)
+            when !ENV['DOCKER_PROJECTS'].blank?
+              ENV['DOCKER_PROJECTS'].split(/,/)
+            else
+              get_projects('./dockerfiles')
             end
 
           images = projects.map { |p| project2image(p) }
@@ -169,9 +175,12 @@ module MyDockerRake
         desc "Remove project's images"
         task :rmi, [:images] do |t, args|
           images = case
-            when args.images            then args.projects.split(/,/)
-            when ENV['DOCKER_PROJECTS'] then ENV['DOCKER_PROJECTS'].split(/,/)
-            else get_projects('./dockerfiles').map { |p| project2image(p) }
+            when !args.images.blank?
+              args.projects.split(/,/)
+            when !ENV['DOCKER_PROJECTS'].blank?
+              ENV['DOCKER_PROJECTS'].split(/,/).map { |p| project2image(p) }
+            else
+              get_projects('./dockerfiles').map { |p| project2image(p) }
             end
 
           images.each do |image|
