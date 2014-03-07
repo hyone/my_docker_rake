@@ -35,7 +35,7 @@ module MyDockerRake
     def define_tasks
       namespace :docker do
 
-        desc 'build docker images'
+        desc "Build project's docker images"
         task :build, [:projects, :no_cache, :build_rm] do |t, args|
           _no_cache = args.no_cache || ENV['DOCKER_NO_CACHE'] || no_cache
           _build_rm = args.build_rm || ENV['DOCKER_BUILD_RM'] || build_rm
@@ -59,7 +59,7 @@ module MyDockerRake
           end
         end
 
-        desc 'run project containers'
+        desc "Run project's docker containers"
         task :run do
 
           images = containers.map { |c| c[:image] }
@@ -86,7 +86,7 @@ module MyDockerRake
           end
         end
 
-        desc 'push docker image to docker index service'
+        desc "Push project's docker images to docker index service"
         task :push, [:project] do |t, args|
           registry_host = "#{docker_host}:5000"
 
@@ -103,7 +103,7 @@ module MyDockerRake
           end
         end
 
-        desc 'kill main container'
+        desc "Kill project's docker containers"
         task :kill, [:containers] do |t, args|
           container_names =
             if not args.containers.blank? or ENV['DOCKER_CONTAINERS']
@@ -117,7 +117,7 @@ module MyDockerRake
           end
         end
 
-        desc 'remove main container'
+        desc "Remove project's docker containers"
         task :rm, [:containers, :force_delete] do |t, args|
           _force_delete = args.force_delete || ENV['DOCKER_FORCE_DELETE']
 
@@ -138,16 +138,16 @@ module MyDockerRake
           end
         end
 
-        desc 'kill and remove main container'
+        desc "Kill and remove project's docker containers"
         task :destroy, [:containers, :force_delete] do |t, args|
           task('docker:kill').invoke(args.containers)
           task('docker:rm').invoke(args.containers, args.force_delete)
         end
 
-        desc 'destroy and re-run the container'
+        desc "Destroy and re-run project's containers"
         task :rerun => ['docker:destroy', 'docker:run']
 
-        desc 'remove project images (and containers)'
+        desc "Remove project's images"
         task :rmi, [:images] do |t, args|
           images = case
             when args.images            then args.projects.split(/,/)
@@ -160,7 +160,7 @@ module MyDockerRake
           end
         end
 
-        desc "clean all project's docker images and containers"
+        desc "Clean all project's docker images and containers"
         task :clean do
           task('docker:destroy').invoke(nil, true)
           task('docker:rmi').invoke()
