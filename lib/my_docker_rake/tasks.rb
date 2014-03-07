@@ -151,7 +151,7 @@ module MyDockerRake
         end
 
         desc "Destroy and re-run project's containers"
-        task :rerun => ['docker:destroy', 'docker:run']
+        task :restart => ['docker:destroy', 'docker:run']
 
         desc "Remove project's images"
         task :rmi, [:images] do |t, args|
