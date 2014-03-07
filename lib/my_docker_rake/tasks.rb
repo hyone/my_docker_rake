@@ -96,15 +96,28 @@ module MyDockerRake
             else get_projects('./dockerfiles')
             end
 
-          projects.each do |project|
-            image = project.gsub('_', '/')
+          images = projects.map { |p| project2image(p) }
+          repos  = images.map { |i| i.split(':').shift }.uniq
+
+          if registry_host
+            images.each do |image|
+              sh "docker tag #{image} #{registry_host}/#{image}"
+            end
+          end
+
+          repos.each do |repo|
             # private docker registry
             if registry_host
-              sh "docker tag  #{image} #{registry_host}/#{image}"
-              sh "docker push #{registry_host}/#{image}"
+              sh "docker push #{registry_host}/#{repo}"
             # public
             else
-              sh "docker push #{image}"
+              sh "docker push #{repo}"
+            end
+          end
+
+          if registry_host
+            images.each do |image|
+              sh "docker rmi #{registry_host}/#{image}"
             end
           end
         end
