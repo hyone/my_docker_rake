@@ -112,6 +112,8 @@ end
 #### configuration
 
 - `containers`: containers settings to run
+  - `name`: container name
+  - `hostname`: container hostname ( if not specified, use `name` )
   - `links`: container names to link ( e.g. `['hoge_container', 'fuga_container']` )
   - `ports`: ports to expose ( e.g. `[22, 80, '48080:8080']` )
   - `volumes_from`: container names to mount its volumes ( e.g. `['hoge_container', 'fuga_container']` )
