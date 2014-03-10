@@ -25,6 +25,7 @@ module MyDockerRake
         end || 'localhost'
     end
 
+    attr_accessor :after_build
 
     def initialize(*args, &configure_block)
       configure_block.call(self) if configure_block
@@ -59,6 +60,10 @@ module MyDockerRake
                 -t #{image} \
                 dockerfiles/#{project}
             EOC
+          end
+
+          unless after_build.blank?
+            sh after_build
           end
         end
 

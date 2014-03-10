@@ -86,7 +86,17 @@ See also a sample project in `spec/sample_project`.
 - `no_cache` ( `DOCKER_NO_CACHE` ) : whether or not use docker build *--no-cache* option
 - `build_rm` ( `DOCKER_BUILD_RM` ) : whether or not use docker build *--rm* option
 
+#### configuration
+
+- `after_build` : shell command string to run after build has finished
+
 Example.
+
+```ruby
+MyDockerRake::Tasks.new do |c|
+  c.after_build = 'docker tag hoge fuga'
+end
+```
 
 ```sh
 rake docker:build DOCKER_NO_CACHE=1
