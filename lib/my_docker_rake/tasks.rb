@@ -14,17 +14,6 @@ module MyDockerRake
     attr_accessor :containers
     attr_accessor :no_cache
     attr_accessor :build_rm
-    attr_accessor :docker_host
-
-    def docker_host
-      @docker_host ||=
-        begin
-          URI.parse(ENV['DOCKER_HOST'])
-        rescue URI::InvalidURIError
-          URI.parse('localhost:4243')
-        end || 'localhost'
-    end
-
     attr_accessor :after_build
 
     def initialize(*args, &configure_block)
