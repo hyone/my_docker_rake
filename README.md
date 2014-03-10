@@ -99,7 +99,7 @@ end
 ```
 
 ```sh
-rake docker:build DOCKER_NO_CACHE=1
+$ rake docker:build DOCKER_NO_CACHE=1
 ```
 
 ### docker:run
@@ -153,7 +153,7 @@ Remove project containers
 Example.
 
 ```sh
-rake docker:rm DOCKER_CONTAINERS=hoge_container,fuga_container DOCKER_FORCE_DELETE=1
+$ rake docker:rm DOCKER_CONTAINERS=hoge_container,fuga_container DOCKER_FORCE_DELETE=1
 ```
 
 ### docker:destroy
