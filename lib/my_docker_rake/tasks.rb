@@ -57,7 +57,8 @@ module MyDockerRake
         end
 
         desc "Run project's docker containers"
-        task :run do
+        task :run, [:no_daemon] do
+          _no_daemon = args.no_daemon || ENV['DOCKER_NO_DAEMON'] || no_cache
 
           images = containers.map { |c| c[:image] }
           unless images.all? { |i| has_image?(i) }
@@ -71,7 +72,8 @@ module MyDockerRake
               volumes_from = container[:volumes_from] || []
 
               sh <<-EOC.gsub(/\s+/, ' ')
-                docker run -d \
+                docker run \
+                  #{ _no_daemon ? '' : '-d' } \
                   --name #{container[:name]} \
                   --hostname #{container[:hostname] || container[:name].gsub(/\./, '_')} \
                   #{ links.map { |l| "--link #{l}" }.join(' ') } \
