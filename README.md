@@ -53,13 +53,18 @@ then, provides tasks below :
 ```sh
 rake docker:build[projects,no_cache,build_rm]  # Build project's docker images
 rake docker:clean                              # Clean all project's docker images and containers
+rake docker:create                             # synonym of task 'docker:run'
 rake docker:destroy[containers,force_delete]   # Kill and remove project's docker containers
 rake docker:kill[containers]                   # Kill project's docker containers
 rake docker:push[projects,registry_host]       # Push project's docker images to docker index service
-rake docker:restart                            # Destroy and re-run project's containers
+rake docker:recreate                           # Destroy and re-run project's containers
+rake docker:rerun                              # synonym of task 'docker:recreate'
+rake docker:restart                            # restart containers
 rake docker:rm[containers,force_delete]        # Remove project's docker containers
 rake docker:rmi[images]                        # Remove project's images
-rake docker:run                                # Run project's docker containers
+rake docker:run[no_daemon]                     # Run project's docker containers
+rake docker:start                              # start containers
+rake docker:stop                               # stop containers
 ```
 
 ## Tasks
