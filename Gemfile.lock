@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    my_docker_rake (0.0.8)
+    my_docker_rake (0.0.9)
       rake
 
 GEM
