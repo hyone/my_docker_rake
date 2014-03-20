@@ -86,6 +86,31 @@ module MyDockerRake
           end
         end
 
+        desc "synonym of task 'docker:run'"
+        task :create => ['docker:run']
+
+        desc "start containers"
+        task :start do
+          containers.each do |container|
+            if container[:name] and has_container?(container[:name])
+              sh <<-EOC.gsub(/\s+/, ' ')
+                docker start #{container[:name]}
+              EOC
+            end
+          end
+        end
+
+        desc "stop containers"
+        task :stop do
+          containers.each do |container|
+            if container[:name] and has_container?(container[:name])
+              sh <<-EOC.gsub(/\s+/, ' ')
+                docker stop #{container[:name]}
+              EOC
+            end
+          end
+        end
+
         desc "Push project's docker images to docker index service"
         task :push, [:projects, :registry_host] do |t, args|
           registry_host = args.registry_host || ENV['DOCKER_REGISTRY_HOST']
@@ -167,7 +192,21 @@ module MyDockerRake
         end
 
         desc "Destroy and re-run project's containers"
-        task :restart => ['docker:destroy', 'docker:run']
+        task :recreate => ['docker:destroy', 'docker:run']
+
+        desc "synonym of task 'docker:recreate'"
+        task :rerun => ['docker:recreate']
+
+        desc "restart containers"
+        task :restart do
+          containers.each do |container|
+            if container[:name] and has_container?(container[:name])
+              sh <<-EOC.gsub(/\s+/, ' ')
+                docker restart #{container[:name]}
+              EOC
+            end
+          end
+        end
 
         desc "Remove project's images"
         task :rmi, [:images] do |t, args|
