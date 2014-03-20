@@ -57,32 +57,46 @@ module MyDockerRake
         end
 
         desc "Run project's docker containers"
-        task :run, [:no_daemon] do |t, args|
+        task :run, [:container, :no_daemon] do |t, args|
           _no_daemon = args.no_daemon || ENV['DOCKER_NO_DAEMON'] || no_cache
 
-          images = containers.map { |c| c[:image] }
+          container_names =
+            if not args.container.blank? or ENV['DOCKER_CONTAINER']
+              [args.container || ENV['DOCKER_CONTAINER']]
+            else
+              containers.map { |c| c[:name] }
+            end
+
+          images = containers
+                     .select { |c| container_names.member?(c[:name]) and c[:image] }
+                     .map { |c| c[:image] }
           unless images.all? { |i| has_image?(i) }
             task('docker:build').invoke
           end
 
           containers.each do |container|
-            if container[:name] and not has_container?(container[:name])
-              links = container[:links] || []
-              ports = container[:ports] || []
-              volumes_from = container[:volumes_from] || []
-
-              sh <<-EOC.gsub(/\s+/, ' ')
-                docker run \
-                  #{ _no_daemon ? '' : '-d' } \
-                  --name #{container[:name]} \
-                  --hostname #{container[:hostname] || container[:name].gsub(/\./, '_')} \
-                  #{ links.map { |l| "--link #{l}" }.join(' ') } \
-                  #{ ports.map { |p| "-p #{p}" }.join(' ') } \
-                  #{ volumes_from.map { |v| "--volumes-from #{v}" }.join(' ') } \
-                  #{ container[:options] } \
-                  #{ container[:image] }
-              EOC
+            if container[:name].blank? or
+              not container_names.member?(container[:name]) or
+              # if the container already exists
+              has_container?(container[:name])
+                next
             end
+
+            links = container[:links] || []
+            ports = container[:ports] || []
+            volumes_from = container[:volumes_from] || []
+
+            sh <<-EOC.gsub(/\s+/, ' ')
+              docker run \
+                #{ _no_daemon ? '' : '-d' } \
+                --name #{container[:name]} \
+                --hostname #{container[:hostname] || container[:name].gsub(/\./, '_')} \
+                #{ links.map { |l| "--link #{l}" }.join(' ') } \
+                #{ ports.map { |p| "-p #{p}" }.join(' ') } \
+                #{ volumes_from.map { |v| "--volumes-from #{v}" }.join(' ') } \
+                #{ container[:options] } \
+                #{ container[:image] }
+            EOC
           end
         end
 
@@ -151,10 +165,10 @@ module MyDockerRake
         end
 
         desc "Kill project's docker containers"
-        task :kill, [:containers] do |t, args|
+        task :kill, [:container] do |t, args|
           container_names =
-            if not args.containers.blank? or ENV['DOCKER_CONTAINERS']
-              [(args.containers || ENV['DOCKER_CONTAINERS']).split(/,/)]
+            if not args.container.blank? or ENV['DOCKER_CONTAINER']
+              [args.container || ENV['DOCKER_CONTAINER']]
             else
               containers.map { |c| c[:name] }
             end
@@ -169,8 +183,8 @@ module MyDockerRake
           _force_delete = args.force_delete || ENV['DOCKER_FORCE_DELETE']
 
           container_names =
-            if not args.containers.blank? or ENV['DOCKER_CONTAINERS']
-              [(args.containers || ENV['DOCKER_CONTAINERS']).split(/,/)]
+            if not args.container.blank? or ENV['DOCKER_CONTAINER']
+              [args.container || ENV['DOCKER_CONTAINER']]
             else
               containers.map { |c| c[:name] }
             end
