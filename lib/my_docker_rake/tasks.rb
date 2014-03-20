@@ -57,7 +57,7 @@ module MyDockerRake
         end
 
         desc "Run project's docker containers"
-        task :run, [:no_daemon] do
+        task :run, [:no_daemon] do |t, args|
           _no_daemon = args.no_daemon || ENV['DOCKER_NO_DAEMON'] || no_cache
 
           images = containers.map { |c| c[:image] }
