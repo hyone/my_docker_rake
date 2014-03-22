@@ -126,8 +126,9 @@ module MyDockerRake
         end
 
         desc "Push project's docker images to docker index service"
-        task :push, [:projects, :registry_host, :rm_image] do |t, args|
+        task :push, [:projects, :registry_host, :rm_images] do |t, args|
           registry_host = args.registry_host || ENV['DOCKER_REGISTRY_HOST']
+          rm_images     = args.rm_images     || ENV['DOCKER_RM_IMAGES'] || false
 
           projects = case
             when !args.projects.blank?
@@ -174,7 +175,7 @@ module MyDockerRake
             end
           end
 
-          if registry_host
+          if rm_images
             deploy_images.each do |_, fullname|
               remove_image(fullname)
             end
