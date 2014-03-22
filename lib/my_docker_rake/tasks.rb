@@ -126,7 +126,7 @@ module MyDockerRake
         end
 
         desc "Push project's docker images to docker index service"
-        task :push, [:projects, :registry_host] do |t, args|
+        task :push, [:projects, :registry_host, :rm_image] do |t, args|
           registry_host = args.registry_host || ENV['DOCKER_REGISTRY_HOST']
 
           projects = case
@@ -140,13 +140,30 @@ module MyDockerRake
 
           images = projects.map { |p| project2image(p) }
           repos  = images.map { |i| i.split(':').shift }.uniq
+          prefix = registry_host.blank? ? '' : "#{registry_host}/"
 
-          if registry_host
-            images.each do |image|
-              sh "docker tag #{image} #{registry_host}/#{image}"
-            end
+          deploy_images = images.map do |image|
+            fullname = "#{prefix}#{image}"
+            [image, fullname]
           end
 
+          # if the image do not have a tag,
+          # we additionally tags current date to identify the current image build
+          version = Time.now.strftime('%Y%m%d%H%M')
+
+          deploy_images += images.map { |image|
+            name, tag = image.split(':')
+            tag = tag.blank? ? version : "#{tag}+#{version}"
+            fullname = "#{prefix}#{name}:#{tag}"
+            [image, fullname]
+          }
+
+          # tagging
+          deploy_images.each do |image, fullname|
+            sh "docker tag #{image} #{fullname}"
+          end
+
+          # push
           repos.each do |repo|
             # private docker registry
             if registry_host
@@ -158,8 +175,8 @@ module MyDockerRake
           end
 
           if registry_host
-            images.each do |image|
-              sh "docker rmi #{registry_host}/#{image}"
+            deploy_images.each do |_, fullname|
+              remove_image(fullname)
             end
           end
         end
