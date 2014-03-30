@@ -15,6 +15,7 @@ module MyDockerRake
     attr_accessor :no_cache
     attr_accessor :build_rm
     attr_accessor :after_build
+    attr_accessor :no_daemon
 
     def initialize(*args, &configure_block)
       configure_block.call(self) if configure_block
@@ -58,7 +59,7 @@ module MyDockerRake
 
         desc "Run project's docker containers"
         task :run, [:container, :no_daemon] do |t, args|
-          _no_daemon = args.no_daemon || ENV['DOCKER_NO_DAEMON'] || no_cache
+          _no_daemon = args.no_daemon || ENV['DOCKER_NO_DAEMON'] || no_daemon
 
           container_names =
             if not args.container.blank? or ENV['DOCKER_CONTAINER']
