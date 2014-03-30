@@ -55,7 +55,7 @@ describe 'docker:run' do
   include_context 'rake'
 
   after(:each) {
-    rake['docker:destroy'].invoke()
+    rake['docker:clean'].invoke
   }
 
   it 'run docker containers' do
