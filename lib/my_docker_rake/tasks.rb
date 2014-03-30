@@ -13,7 +13,7 @@ module MyDockerRake
 
     attr_accessor :containers
     attr_accessor :no_cache
-    attr_accessor :build_rm
+    attr_accessor :rm_build
     attr_accessor :after_build
     attr_accessor :no_daemon
 
@@ -27,9 +27,9 @@ module MyDockerRake
       namespace :docker do
 
         desc "Build project's docker images"
-        task :build, [:projects, :no_cache, :build_rm] do |t, args|
+        task :build, [:projects, :no_cache, :rm_build] do |t, args|
           _no_cache = args.no_cache || ENV['DOCKER_NO_CACHE'] || no_cache
-          _build_rm = args.build_rm || ENV['DOCKER_BUILD_RM'] || build_rm
+          _rm_build = args.rm_build || ENV['DOCKER_RM_BUILD'] || rm_build
 
           projects = case
             when !args.projects.blank?
@@ -46,7 +46,7 @@ module MyDockerRake
             sh <<-EOC.gsub(/\s+/, ' ')
               docker build \
                 #{_no_cache ? '--no-cache' : ''} \
-                #{_build_rm ? '--rm' : ''} \
+                #{_rm_build ? '--rm' : ''} \
                 -t #{image} \
                 dockerfiles/#{project}
             EOC
