@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    my_docker_rake (0.0.9)
+    my_docker_rake (0.0.11)
       rake
 
 GEM
@@ -14,7 +14,7 @@ GEM
       coderay (~> 1.0)
       method_source (~> 0.8)
       slop (~> 3.4)
-    rake (10.1.1)
+    rake (10.2.2)
     rspec (2.14.1)
       rspec-core (~> 2.14.0)
       rspec-expectations (~> 2.14.0)
