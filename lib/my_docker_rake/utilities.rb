@@ -11,8 +11,16 @@ module MyDockerRake
       `docker inspect -format "{{ .State.Running }}" #{container} 2>/dev/null`.chomp == 'true'
     end
 
+    def container_ids
+      container_ids =(`docker ps -a -q | xargs`).chomp
+    end
+    
     def container_names
-       names_output = `docker inspect --format "{{.Name}}" $(docker ps -a -q)`
+       ids = container_ids
+       if ids.blank?
+         return []
+       end
+       names_output = `docker inspect --format "{{.Name}}" #{ids}`
        unless names_output
          return []
        end
