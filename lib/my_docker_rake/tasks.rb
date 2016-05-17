@@ -91,7 +91,7 @@ module MyDockerRake
               docker run \
                 #{ _no_daemon ? '' : '-d' } \
                 --name #{container[:name]} \
-                --hostname #{container[:hostname] || container[:name].gsub(/\./, '_')} \
+                --hostname #{container[:hostname] || container[:name].gsub('_', '.')} \
                 #{ links.map { |l| "--link #{l}" }.join(' ') } \
                 #{ ports.map { |p| "-p #{p}" }.join(' ') } \
                 #{ volumes_from.map { |v| "--volumes-from #{v}" }.join(' ') } \
