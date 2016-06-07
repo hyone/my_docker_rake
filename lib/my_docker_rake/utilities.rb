@@ -11,8 +11,27 @@ module MyDockerRake
       `docker inspect -format "{{ .State.Running }}" #{container} 2>/dev/null`.chomp == 'true'
     end
 
+    def container_ids
+      container_ids =(`docker ps -a -q | xargs`).chomp
+    end
+    
+    def container_names
+       ids = container_ids
+       if ids.blank?
+         return []
+       end
+       names_output = `docker inspect --format "{{.Name}}" #{ids}`
+       unless names_output
+         return []
+       end
+       names_output.lines.map{|n| n.match(/\/(.+)/)[1] }
+    rescue =>e
+      puts "Encountered a problem trying to parse container names"
+      raise e
+    end
+    
     def has_container?(container)
-      system("docker inspect #{container} >/dev/null 2>&1")
+      container_names.any?{|n| n == container}      
     end
 
     def kill_container(container, *args)

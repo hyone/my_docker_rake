@@ -1,2 +1,2 @@
-require 'my_docker_rake/version'
-require 'my_docker_rake/utilities'
+require_relative 'my_docker_rake/version'
+require_relative 'my_docker_rake/utilities'
